@@ -327,6 +327,135 @@ func TestEndToEnd(t *testing.T) {
 	}
 }
 
+// TestURLRewritePrefix verifies route interception on the incoming path while
+// the path is rewritten downstream, in prefix mode, for both mirrors and
+// plain forwards.
+func TestURLRewritePrefix(t *testing.T) {
+	orig := mockService(false)
+	mig := mockService(true)
+	defer orig.Close()
+	defer mig.Close()
+
+	cfg := config.Defaults()
+	cfg.Original = orig.URL
+	cfg.Migrated = mig.URL
+	cfg.Timeout.Duration = 2 * time.Second
+	cfg.Routes.MatchMode = "prefix"
+	cfg.Routes.Allow = []string{"/legacy"}
+	cfg.Routes.Rewrite = []config.RewriteRule{{From: "/legacy", To: "/api"}}
+	cfg.IgnoreFields = []string{"server_time"}
+	cfg.HeadersToCompare = []string{"content-type", "x-api-version"}
+	cfg.DB.Path = filepath.Join(t.TempDir(), "rewrite-prefix.db")
+
+	db, err := store.New(cfg.DB.Path)
+	if err != nil {
+		t.Fatalf("store: %v", err)
+	}
+	t.Cleanup(func() { db.Close() })
+
+	p, err := proxy.New(cfg, db, "rewrite-prefix-run")
+	if err != nil {
+		t.Fatalf("proxy: %v", err)
+	}
+	ts := httptest.NewServer(p)
+	t.Cleanup(ts.Close)
+
+	// Mirrored: intercepted as /legacy/users, sent upstream as /api/users.
+	res, body := do(t, ts, "GET", "/legacy/users?id=1")
+	if res.StatusCode != http.StatusOK || !strings.Contains(body, "Jane") {
+		t.Fatalf("mirror rewrite failed: %d %q", res.StatusCode, body)
+	}
+	records, err := db.List()
+	if err != nil {
+		t.Fatalf("list: %v", err)
+	}
+	if len(records) != 1 {
+		t.Fatalf("expected 1 mirrored record, got %d", len(records))
+	}
+	if records[0].Path != "/legacy/users" {
+		t.Errorf("comparison should be recorded against the intercepted path, got %q", records[0].Path)
+	}
+	if !records[0].IsMatch {
+		t.Errorf("expected rewritten mirror to match, got %+v", records[0])
+	}
+
+	// Forwarded (non-idempotent POST): rewritten to /api/orders upstream.
+	res, _ = do(t, ts, "POST", "/legacy/orders")
+	if res.StatusCode != http.StatusCreated {
+		t.Fatalf("forward rewrite failed: expected 201 from /api/orders, got %d", res.StatusCode)
+	}
+}
+
+// TestURLRewriteRegex verifies regex-mode rewrites with capture groups.
+func TestURLRewriteRegex(t *testing.T) {
+	orig := mockService(false)
+	mig := mockService(true)
+	defer orig.Close()
+	defer mig.Close()
+
+	cfg := config.Defaults()
+	cfg.Original = orig.URL
+	cfg.Migrated = mig.URL
+	cfg.Timeout.Duration = 2 * time.Second
+	cfg.Routes.MatchMode = "regex"
+	cfg.Routes.Allow = []string{`^/legacy/`}
+	cfg.Routes.Rewrite = []config.RewriteRule{{From: `^/legacy/(.*)$`, To: "/api/$1"}}
+	cfg.IgnoreFields = []string{"server_time"}
+	cfg.HeadersToCompare = []string{"content-type", "x-api-version"}
+	cfg.DB.Path = filepath.Join(t.TempDir(), "rewrite-regex.db")
+
+	db, err := store.New(cfg.DB.Path)
+	if err != nil {
+		t.Fatalf("store: %v", err)
+	}
+	t.Cleanup(func() { db.Close() })
+
+	p, err := proxy.New(cfg, db, "rewrite-regex-run")
+	if err != nil {
+		t.Fatalf("proxy: %v", err)
+	}
+	ts := httptest.NewServer(p)
+	t.Cleanup(ts.Close)
+
+	res, body := do(t, ts, "GET", "/legacy/users?id=2")
+	if res.StatusCode != http.StatusOK || !strings.Contains(body, "Jane") {
+		t.Fatalf("regex rewrite failed: %d %q", res.StatusCode, body)
+	}
+
+	// Non-matching regex is left untouched.
+	if got := p.RewritePathForTest("/other/path"); got != "/other/path" {
+		t.Errorf("RewritePathForTest(/other/path) = %q, want unchanged", got)
+	}
+	if got := p.RewritePathForTest("/legacy/users/3"); got != "/api/users/3" {
+		t.Errorf("RewritePathForTest(/legacy/users/3) = %q, want /api/users/3", got)
+	}
+}
+
+// TestRewriteConfigValidation verifies invalid rewrite rules fail fast.
+func TestRewriteConfigValidation(t *testing.T) {
+	cfg := config.Defaults()
+	cfg.Original = "http://orig"
+	cfg.Migrated = "http://mig"
+	cfg.Routes.Rewrite = []config.RewriteRule{{To: "/v2"}}
+	if err := cfg.Validate(); err == nil {
+		t.Fatal("expected validation error for rewrite rule without from")
+	}
+
+	cfg.Routes.Rewrite = []config.RewriteRule{{From: "(unclosed", To: "/v2"}}
+	cfg.Routes.MatchMode = "regex"
+	if err := cfg.Validate(); err != nil {
+		t.Fatalf("validate should pass (regex compiled later), got %v", err)
+	}
+	db, err := store.New(filepath.Join(t.TempDir(), "bad-rewrite.db"))
+	if err != nil {
+		t.Fatalf("store: %v", err)
+	}
+	defer db.Close()
+	if _, err := proxy.New(cfg, db, "bad-rewrite-run"); err == nil {
+		t.Fatal("expected invalid rewrite regex to fail at startup")
+	}
+}
+
 func containsDiffPath(paths []string, want string) bool {
 	for _, p := range paths {
 		if p == want {

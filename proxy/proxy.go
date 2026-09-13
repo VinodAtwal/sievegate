@@ -33,6 +33,14 @@ func (h headerMap) get(name string) string {
 	return ""
 }
 
+// compiledRewrite is a precompiled URL rewrite rule. In regex mode rx holds the
+// compiled From pattern; in prefix mode only from/to are used.
+type compiledRewrite struct {
+	from string
+	to   string
+	rx   *regexp.Regexp
+}
+
 type capturedResponse struct {
 	label    string
 	status   int
@@ -54,6 +62,7 @@ type Proxy struct {
 	runID     string
 	allowRx   []*regexp.Regexp
 	denyRx    []*regexp.Regexp
+	rewrites  []compiledRewrite
 	regexMode bool
 }
 
@@ -147,8 +156,12 @@ func (p *Proxy) matchesRoutes(path string) bool {
 	return false
 }
 
-// compileRoutes precompiles allow/deny patterns when match_mode is "regex".
+// compileRoutes precompiles allow/deny/rewrite patterns. Only regex mode
+// precompiles regular expressions; prefix mode matches plain strings.
 func (p *Proxy) compileRoutes() error {
+	for _, rw := range p.cfg.Routes.Rewrite {
+		p.rewrites = append(p.rewrites, compiledRewrite{from: rw.From, to: rw.To})
+	}
 	if p.cfg.Routes.MatchMode != "regex" {
 		return nil
 	}
@@ -167,6 +180,13 @@ func (p *Proxy) compileRoutes() error {
 		}
 		p.denyRx = append(p.denyRx, rx)
 	}
+	for i := range p.rewrites {
+		rx, err := regexp.Compile(p.rewrites[i].from)
+		if err != nil {
+			return fmt.Errorf("config: routes.rewrite.from %q: %w", p.rewrites[i].from, err)
+		}
+		p.rewrites[i].rx = rx
+	}
 	return nil
 }
 
@@ -175,9 +195,32 @@ func (p *Proxy) MatchesRoutesForTest(path string) bool {
 	return p.matchesRoutes(path)
 }
 
+// rewritePath applies the configured URL rewrites to a request path. Rules are
+// applied in order; the first match wins. In regex mode From is a RE2 pattern
+// and To may reference capture groups; in prefix mode the From prefix is
+// replaced with To.
+func (p *Proxy) rewritePath(path string) string {
+	for _, rw := range p.rewrites {
+		if p.regexMode {
+			if rw.rx.MatchString(path) {
+				return rw.rx.ReplaceAllString(path, rw.to)
+			}
+		} else if strings.HasPrefix(path, rw.from) {
+			return rw.to + path[len(rw.from):]
+		}
+	}
+	return path
+}
+
+// RewritePathForTest exposes path rewriting for integration tests.
+func (p *Proxy) RewritePathForTest(path string) string {
+	return p.rewritePath(path)
+}
+
 func (p *Proxy) handleForward(w http.ResponseWriter, r *http.Request) {
 	// Non-idempotent or un-mirrored requests pass straight through to the
-	// original service untouched.
+	// original service, apart from configured URL rewrites.
+	r.URL.Path = p.rewritePath(r.URL.Path)
 	p.origProxy.ServeHTTP(w, r)
 }
 
@@ -188,11 +231,15 @@ func (p *Proxy) handleMirrored(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Route matching (interception) uses the incoming path, but the path sent
+	// upstream is the rewritten one. The comparison is recorded against the
+	// original intercepted path.
+	upstreamPath := p.rewritePath(r.URL.Path)
 	info := requestInfo{method: r.Method, path: r.URL.Path, query: r.URL.RawQuery}
 
 	ch := make(chan capturedResponse, 2)
-	go p.capture("original", p.cfg.Original, r, body, ch)
-	go p.capture("migrated", p.cfg.Migrated, r, body, ch)
+	go p.capture("original", p.cfg.Original, upstreamPath, r, body, ch)
+	go p.capture("migrated", p.cfg.Migrated, upstreamPath, r, body, ch)
 
 	var origRes, migRes capturedResponse
 	for i := 0; i < 2; i++ {
@@ -237,8 +284,8 @@ func (p *Proxy) handleMirrored(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (p *Proxy) capture(label, target string, r *http.Request, body []byte, ch chan<- capturedResponse) {
-	req, err := p.buildTargetRequest(target, r, body)
+func (p *Proxy) capture(label, target, path string, r *http.Request, body []byte, ch chan<- capturedResponse) {
+	req, err := p.buildTargetRequest(target, path, r, body)
 	if err != nil {
 		ch <- capturedResponse{label: label, err: err}
 		return
@@ -268,12 +315,12 @@ func (p *Proxy) capture(label, target string, r *http.Request, body []byte, ch c
 	}
 }
 
-func (p *Proxy) buildTargetRequest(target string, r *http.Request, body []byte) (*http.Request, error) {
+func (p *Proxy) buildTargetRequest(target, path string, r *http.Request, body []byte) (*http.Request, error) {
 	u, err := url.Parse(target)
 	if err != nil {
 		return nil, err
 	}
-	u.Path = r.URL.Path
+	u.Path = path
 	u.RawQuery = r.URL.RawQuery
 
 	req, err := http.NewRequest(r.Method, u.String(), bytes.NewReader(body))

@@ -71,10 +71,26 @@ type RouteRules struct {
 	Allow []string `yaml:"allow"`
 	Deny  []string `yaml:"deny"`
 
+	// Rewrites maps intercepted request paths to the paths sent upstream
+	// (original + migrated) and to forwarded requests. Rules apply in order;
+	// the first match wins. See RewriteRule for match semantics.
+	Rewrite []RewriteRule `yaml:"rewrite"`
+
 	// MatchMode determines how patterns are matched:
 	//   "prefix" (default) - plain string prefix match
 	//   "regex"            - Go (RE2) regular expressions
 	MatchMode string `yaml:"match_mode"`
+}
+
+// RewriteRule rewrites a request path before it is sent upstream, using the
+// same match_mode as allow/deny.
+//   - "prefix": if the path starts with From, the matched prefix is replaced
+//     with To (e.g. From "/api/v1", To "/v2": "/api/v1/users" -> "/v2/users").
+//   - "regex": From is a Go (RE2) expression and To may use $1, $2, …
+//     capture groups (e.g. From "^/api/v1/(.*)$", To "/v2/$1").
+type RewriteRule struct {
+	From string `yaml:"from"`
+	To   string `yaml:"to"`
 }
 
 type DBConfig struct {
@@ -167,6 +183,11 @@ func (c *Config) Validate() error {
 	case "prefix", "regex":
 	default:
 		return fmt.Errorf("config: routes.match_mode must be \"prefix\" or \"regex\", got %q", c.Routes.MatchMode)
+	}
+	for i, rw := range c.Routes.Rewrite {
+		if rw.From == "" {
+			return fmt.Errorf("config: routes.rewrite[%d].from is required", i)
+		}
 	}
 	return nil
 }

@@ -37,6 +37,21 @@ routes:
     - "/api/admin"
     - "/api/internal"
 
+  # Rewrite intercepted request paths before they are sent upstream
+  # (original + migrated) and on plain forwards. Rules apply in order;
+  # the first match wins.
+  #   prefix (default): the "from" prefix is replaced with "to".
+  #   regex  (match_mode: regex): "from" is a RE2 expression, "to" may use
+  #          capture groups like $1.
+  # Incoming "/api/v1/users" -> downstream "/v2/users":
+  rewrite:
+    - from: "/api/v1"
+      to:   "/v2"
+  # With match_mode: regex you could instead write:
+  #   rewrite:
+  #     - from: "^/api/v1/(.*)$"
+  #       to:   "/v2/$1"
+
 # With regex you could instead write:
 # match_mode: regex
 #   allow: ["^/api.*/users/[0-9]+$"]

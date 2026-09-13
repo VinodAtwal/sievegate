@@ -77,6 +77,7 @@ See `config.example.yaml` for a fully commented example.
 | `idempotent_methods` | GET, HEAD, OPTIONS, PUT, DELETE | Methods mirrored & compared |
 | `routes.allow` | `[]` (all) | Path patterns to mirror |
 | `routes.deny` | `[]` | Path patterns to never mirror (wins over `allow`) |
+| `routes.rewrite` | `[]` | Rewrite intercepted paths before they reach upstream (order matters, first match wins) |
 | `routes.match_mode` | `prefix` | `prefix` (string prefix) or `regex` (Go RE2 expressions) |
 | `headers_to_compare` | `[]` (all) | Headers included in comparison |
 | `ignore_fields` | `[]` | JSON paths excluded from body comparison (`a.b`, `arr.*`) |
@@ -109,6 +110,36 @@ routes:
 The decision per request is: method is idempotent **and** path matches an
 `allow` entry **and not** a `deny` entry (empty `allow` = every path allowed).
 Deny always wins.
+
+### URL rewriting
+
+Interception is decided on the **incoming** path, but you can rewrite the path
+before it is sent to the upstream services. This is useful when the migrated
+service exposes the API under a different path, e.g. incoming `/api/v1/users`
+must reach it as `/v2/users`. Rewrites apply both to mirrored (original +
+migrated) and to plain forwarded requests; the comparison is still recorded
+against the original intercepted path.
+
+```yaml
+# prefix mode (default): replace the "from" prefix with "to"
+routes:
+  match_mode: prefix
+  allow: ["/api/v1"]
+  rewrite:
+    - from: "/api/v1"
+      to:   "/v2"
+
+# regex mode: "from" is a RE2 expression, "to" may use capture groups
+routes:
+  match_mode: regex
+  allow: ["^/api/v1/"]
+  rewrite:
+    - from: "^/api/v1/(.*)$"
+      to:   "/v2/$1"
+```
+
+Rules are applied in order; the first match wins. Interception itself still
+uses the incoming (un-rewritten) path.
 
 ## Why idempotent only?
 
