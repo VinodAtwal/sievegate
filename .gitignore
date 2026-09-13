@@ -1,0 +1,6 @@
+.demo-tmp/
+migration.db
+report.md
+apimigrate
+*.log
+.DS_Store

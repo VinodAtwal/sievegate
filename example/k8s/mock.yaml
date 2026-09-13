@@ -1,0 +1,81 @@
+# Mock services. The same image is deployed twice; MOCK_ROLE selects whether
+# the instance behaves as "original" or "migrated" (minor response diffs).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mock-original
+  namespace: migration-test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mock-original
+  template:
+    metadata:
+      labels:
+        app: mock-original
+    spec:
+      containers:
+        - name: mock
+          image: apimigrate/mock:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - { name: MOCK_ROLE, value: original }
+            - { name: PORT, value: "8080" }
+          ports:
+            - { containerPort: 8080 }
+          readinessProbe:
+            httpGet: { path: /api/health, port: 8080 }
+            initialDelaySeconds: 1
+            periodSeconds: 2
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mock-migrated
+  namespace: migration-test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mock-migrated
+  template:
+    metadata:
+      labels:
+        app: mock-migrated
+    spec:
+      containers:
+        - name: mock
+          image: apimigrate/mock:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - { name: MOCK_ROLE, value: migrated }
+            - { name: PORT, value: "8080" }
+          ports:
+            - { containerPort: 8080 }
+          readinessProbe:
+            httpGet: { path: /api/health, port: 8080 }
+            initialDelaySeconds: 1
+            periodSeconds: 2
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mock-original
+  namespace: migration-test
+spec:
+  selector:
+    app: mock-original
+  ports:
+    - { port: 8080, targetPort: 8080 }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mock-migrated
+  namespace: migration-test
+spec:
+  selector:
+    app: mock-migrated
+  ports:
+    - { port: 8080, targetPort: 8080 }

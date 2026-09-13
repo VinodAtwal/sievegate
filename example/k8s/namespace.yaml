@@ -1,0 +1,44 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: migration-test
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: migration-proxy-config
+  namespace: migration-test
+data:
+  config.yaml: |
+    server:
+      host: "0.0.0.0"
+      port: 8080
+    original: "http://mock-original:8080"
+    migrated: "http://mock-migrated:8080"
+    timeout: "5s"
+    idempotent_methods:
+      - GET
+      - HEAD
+    routes:
+      match_mode: prefix
+      allow:
+        - "/api"
+      deny:
+        - "/api/health"
+        - "/api/admin"
+    headers_to_compare:
+      - "content-type"
+      - "x-api-version"
+    ignore_fields:
+      - "server_time"
+      - "timestamp"
+      - "id"
+    body_preview_chars: 800
+    db:
+      path: "/data/migration.db"
+    report:
+      endpoint: "/report"
+      json_endpoint: "/report.json"
+      store_bodies: true
+      store_full_bodies: true
+      latency_tolerance_ms: 15

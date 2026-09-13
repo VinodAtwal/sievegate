@@ -1,0 +1,43 @@
+# The api-migrate-quality-test proxy.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: migration-proxy
+  namespace: migration-test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: migration-proxy
+  template:
+    metadata:
+      labels:
+        app: migration-proxy
+    spec:
+      containers:
+        - name: proxy
+          image: apimigrate/proxy:latest
+          imagePullPolicy: IfNotPresent
+          args: ["-config", "/config/config.yaml"]
+          ports:
+            - { containerPort: 8080 }
+          volumeMounts:
+            - { name: config, mountPath: /config, readOnly: true }
+            - { name: data, mountPath: /data }
+      volumes:
+        - name: config
+          configMap:
+            name: migration-proxy-config
+        - name: data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: migration-proxy
+  namespace: migration-test
+spec:
+  selector:
+    app: migration-proxy
+  ports:
+    - { port: 8080, targetPort: 8080 }

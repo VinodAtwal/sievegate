@@ -1,0 +1,41 @@
+server:
+  host: "0.0.0.0"
+  port: 8080
+
+original: "http://localhost:9001"
+migrated: "http://localhost:9002"
+
+timeout: "5s"
+
+idempotent_methods:
+  - GET
+  - HEAD
+
+routes:
+  match_mode: prefix
+  allow:
+    - "/api"
+  deny:
+    - "/api/health"
+    - "/api/admin"
+
+headers_to_compare:
+  - "content-type"
+  - "x-api-version"
+
+ignore_fields:
+  - "server_time"
+  - "timestamp"
+  - "id"
+
+body_preview_chars: 800
+
+db:
+  path: "/tmp/migration-local.db"
+
+report:
+  endpoint: "/report"
+  json_endpoint: "/report.json"
+  store_bodies: true
+  store_full_bodies: true
+  latency_tolerance_ms: 15

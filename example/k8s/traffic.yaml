@@ -1,0 +1,38 @@
+# Pump idempotent traffic through the proxy so the report accumulates data.
+# Deploy for a few minutes, fetch the report, then scale down / delete.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: traffic-generator
+  namespace: migration-test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: traffic-generator
+  template:
+    metadata:
+      labels:
+        app: traffic-generator
+    spec:
+      containers:
+        - name: curl
+          image: curlimages/curl:8.10.1
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              echo "traffic generator started"
+              N=0
+              while true; do
+                N=$((N+1))
+                curl -s -o /dev/null http://migration-proxy:8080/api/users/1
+                curl -s -o /dev/null http://migration-proxy:8080/api/users/2
+                curl -s -o /dev/null http://migration-proxy:8080/api/users/missing
+                curl -s -o /dev/null http://migration-proxy:8080/api/orders
+                curl -s -o /dev/null http://migration-proxy:8080/api/products/42
+                curl -s -o /dev/null http://migration-proxy:8080/api/products/7
+                echo "burst $N done"
+                sleep 2
+              done

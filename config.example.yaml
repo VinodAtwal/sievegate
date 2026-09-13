@@ -1,0 +1,70 @@
+# api-migrate-quality-test configuration
+#
+# Copy to config.yaml and adjust for your migration.
+
+server:
+  host: "0.0.0.0"
+  port: 8080
+
+# The service traffic currently flows to.
+original: "http://localhost:9001"
+
+# The migrated / candidate service we are validating.
+migrated: "http://localhost:9002"
+
+# HTTP client timeout for upstream calls.
+timeout: "30s"
+
+# Requests with these methods are mirrored to both targets and compared.
+# Every other method is forwarded only to the original service.
+idempotent_methods:
+  - GET
+  - HEAD
+  - OPTIONS
+  - PUT
+  - DELETE
+
+# How many characters of each response body to retain for debugging.
+body_preview_chars: 800
+
+# Route pattern matching: "prefix" (default) or "regex".
+#   prefix - allow/deny entries are matched as string prefixes
+#   regex  - allow/deny entries are Go (RE2) regular expressions
+routes:
+  allow:
+    - "/api"            # prefix: match "/api/users", "/api/orders", ...
+  deny:
+    - "/api/admin"
+    - "/api/internal"
+
+# With regex you could instead write:
+# match_mode: regex
+#   allow: ["^/api.*/users/[0-9]+$"]
+
+# Response headers included in the comparison.
+# If empty, every response header is compared.
+headers_to_compare:
+  - "content-type"
+  - "content-length"
+  - "cache-control"
+  - "etag"
+
+# JSON paths excluded from body comparison (dot notation, "*" = any array
+# element). These normally hold volatile values (ids, tokens, timestamps).
+ignore_fields:
+  - "id"
+  - "created_at"
+  - "updated_at"
+  - "timestamp"
+  - "data.token"
+  - "metadata.*"
+
+db:
+  path: "./migration.db"   # flushed automatically on every run
+
+report:
+  endpoint: "/report"       # markdown report
+  json_endpoint: "/report.json" # machine-readable report
+  store_bodies: false       # keep truncated body previews in the report
+  store_full_bodies: true   # keep COMPLETE bodies for mismatched records
+  latency_tolerance_ms: 100 # flag a regression when migrated is slower by this many ms
