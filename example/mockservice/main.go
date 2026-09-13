@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-// A small mock service used to demo api-migrate-quality-test.
+// A small mock service used to demo sievegate.
 //
 // The same binary is deployed twice:
 //   - MOCK_ROLE=original  -> the service that currently serves traffic

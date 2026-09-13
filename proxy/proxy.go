@@ -13,9 +13,9 @@ import (
 	"strings"
 	"time"
 
-	"apimigrate/config"
-	"apimigrate/report"
-	"apimigrate/store"
+	"sievegate/config"
+	"sievegate/report"
+	"sievegate/store"
 )
 
 // hopByHop headers must not be forwarded end to end.

@@ -21,8 +21,8 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(dirname "$DIR")"
 
 NAMESPACE="${NAMESPACE:-migration-test}"
-PROXY_IMAGE="${PROXY_IMAGE:-apimigrate/proxy:latest}"
-MOCK_IMAGE="${MOCK_IMAGE:-apimigrate/mock:latest}"
+PROXY_IMAGE="${PROXY_IMAGE:-sievegate/proxy:latest}"
+MOCK_IMAGE="${MOCK_IMAGE:-sievegate/mock:latest}"
 TRAFFIC_SECS="${TRAFFIC_SECS:-30}"
 REPORT_OUT="${REPORT_OUT:-$DIR/report.md}"
 KEEP=0

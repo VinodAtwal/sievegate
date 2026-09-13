@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"apimigrate/config"
-	"apimigrate/models"
-	"apimigrate/store"
+	"sievegate/config"
+	"sievegate/models"
+	"sievegate/store"
 )
 
 // Handler renders a report for the current run.

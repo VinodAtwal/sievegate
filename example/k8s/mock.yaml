@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: mock
-          image: apimigrate/mock:latest
+          image: sievegate/mock:latest
           imagePullPolicy: IfNotPresent
           env:
             - { name: MOCK_ROLE, value: original }
@@ -46,7 +46,7 @@ spec:
     spec:
       containers:
         - name: mock
-          image: apimigrate/mock:latest
+          image: sievegate/mock:latest
           imagePullPolicy: IfNotPresent
           env:
             - { name: MOCK_ROLE, value: migrated }

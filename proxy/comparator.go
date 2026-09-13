@@ -7,8 +7,8 @@ import (
 	"reflect"
 	"strings"
 
-	"apimigrate/config"
-	"apimigrate/models"
+	"sievegate/config"
+	"sievegate/models"
 )
 
 // sentinel replaces values at ignored paths so both sides compare equal

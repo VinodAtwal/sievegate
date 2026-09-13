@@ -11,9 +11,9 @@ import (
 	"syscall"
 	"time"
 
-	"apimigrate/config"
-	"apimigrate/proxy"
-	"apimigrate/store"
+	"sievegate/config"
+	"sievegate/proxy"
+	"sievegate/store"
 )
 
 func main() {
@@ -30,7 +30,7 @@ func main() {
 	}
 
 	runID := time.Now().UTC().Format("20060102T150405Z")
-	log.Printf("starting api-migrate-quality-test run=%s", runID)
+	log.Printf("starting sievegate run=%s", runID)
 	log.Printf("mirroring %s ↔ %s (methods: %v)", cfg.Original, cfg.Migrated, cfg.IdempotentMethods)
 
 	// Opening the store immediately flushes data from any previous run so

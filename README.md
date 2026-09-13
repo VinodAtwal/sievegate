@@ -1,4 +1,4 @@
-# api-migrate-quality-test
+# sievegate
 
 A drop-in proxy that validates an API migration by mirroring idempotent
 traffic to the **original** service and the **migrated** service in parallel,
@@ -9,7 +9,7 @@ performance metrics.
 
 ```
                     ┌──────────────────────────────────────────┐
-                    │   api-migrate-quality-test (this proxy)  │
+                    │   sievegate (this proxy)  │
  client ──────────► │                                          │
                     │   idempotent method + allowed route?     │
                     │   ┌─ GET /users/1 (parallel, both) ─┐    │
@@ -40,8 +40,8 @@ performance metrics.
 ```bash
 cp config.example.yaml config.yaml
 # point `original` and `migrated` at your services
-go build -o apimigrate .
-./apimigrate -config config.yaml
+go build -o sievegate .
+./sievegate -config config.yaml
 ```
 
 Send traffic through the proxy (default `http://localhost:8080`), then browse

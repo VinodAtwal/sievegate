@@ -11,10 +11,10 @@ import (
 	"testing"
 	"time"
 
-	"apimigrate/config"
-	"apimigrate/models"
-	"apimigrate/proxy"
-	"apimigrate/store"
+	"sievegate/config"
+	"sievegate/models"
+	"sievegate/proxy"
+	"sievegate/store"
 )
 
 // mockService is a tiny in-test upstream. The "migrated" variant introduces

@@ -1,7 +1,7 @@
 # Builds either the quality-test proxy (default) or the mock service.
 #
-#   docker build --build-arg PKG=.                       -t apimigrate/proxy:latest .
-#   docker build --build-arg PKG=./example/mockservice   -t apimigrate/mock:latest .
+#   docker build --build-arg PKG=.                       -t sievegate/proxy:latest .
+#   docker build --build-arg PKG=./example/mockservice   -t sievegate/mock:latest .
 FROM golang:1.26-alpine AS build
 WORKDIR /src
 COPY go.mod go.sum ./

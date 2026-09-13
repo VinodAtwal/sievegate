@@ -1,4 +1,4 @@
-module apimigrate
+module sievegate
 
 go 1.26
 

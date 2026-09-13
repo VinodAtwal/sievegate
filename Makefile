@@ -1,6 +1,6 @@
 NAMESPACE ?= migration-test
-PROXY_IMAGE ?= apimigrate/proxy:latest
-MOCK_IMAGE ?= apimigrate/mock:latest
+PROXY_IMAGE ?= sievegate/proxy:latest
+MOCK_IMAGE ?= sievegate/mock:latest
 
 .PHONY: help build-proxy build-mock images deploy undeploy report report-json status logs example-local clean
 

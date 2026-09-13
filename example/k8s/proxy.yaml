@@ -1,4 +1,4 @@
-# The api-migrate-quality-test proxy.
+# The sievegate proxy.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: proxy
-          image: apimigrate/proxy:latest
+          image: sievegate/proxy:latest
           imagePullPolicy: IfNotPresent
           args: ["-config", "/config/config.yaml"]
           ports:

@@ -15,7 +15,7 @@ WORK=".demo-tmp"
 mkdir -p "$WORK"
 ORIG=$WORK/mock-original
 MIG=$WORK/mock-migrated
-PROXY=$WORK/proxy
+PROXY=$WORK/sievegate
 DB=$WORK/migration-demo.db
 rm -f "$DB"
 

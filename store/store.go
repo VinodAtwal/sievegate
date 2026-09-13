@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"apimigrate/models"
+	"sievegate/models"
 
 	_ "modernc.org/sqlite"
 )
