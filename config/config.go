@@ -104,6 +104,10 @@ type ReportConfig struct {
 	// JSONEndpoint optionally exposes the same report as JSON.
 	JSONEndpoint string `yaml:"json_endpoint"`
 
+	// ResetEndpoint exposes a POST-only endpoint that discards all stored
+	// comparison data for the current run. Empty disables it.
+	ResetEndpoint string `yaml:"reset_endpoint"`
+
 	// StoreBodies persists response previews in the database for
 	// debugging discrepancies.
 	StoreBodies bool `yaml:"store_bodies"`
@@ -129,6 +133,7 @@ func Defaults() *Config {
 		Report: ReportConfig{
 			Endpoint:           "/report",
 			JSONEndpoint:       "/report.json",
+			ResetEndpoint:      "/reset",
 			StoreFullBodies:    true,
 			LatencyToleranceMs: 100,
 		},

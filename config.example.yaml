@@ -80,6 +80,7 @@ db:
 report:
   endpoint: "/report"       # markdown report
   json_endpoint: "/report.json" # machine-readable report
+  reset_endpoint: "/reset"   # POST-only: discard all stored comparison data
   store_bodies: false       # keep truncated body previews in the report
   store_full_bodies: true   # keep COMPLETE bodies for mismatched records
   latency_tolerance_ms: 100 # flag a regression when migrated is slower by this many ms

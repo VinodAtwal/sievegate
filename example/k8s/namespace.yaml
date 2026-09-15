@@ -39,6 +39,7 @@ data:
     report:
       endpoint: "/report"
       json_endpoint: "/report.json"
+      reset_endpoint: "/reset"
       store_bodies: true
       store_full_bodies: true
       latency_tolerance_ms: 15

@@ -103,6 +103,12 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Reset endpoint discards all stored comparison data.
+	if p.cfg.Report.ResetEndpoint != "" && r.URL.Path == p.cfg.Report.ResetEndpoint {
+		p.handleReset(w, r)
+		return
+	}
+
 	switch {
 	case p.shouldMirror(r):
 		p.handleMirrored(w, r)
@@ -111,6 +117,22 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		p.handleForward(w, r)
 		log.Printf("[forward] %s %s took=%s", r.Method, r.URL.RequestURI(), time.Since(start).Round(time.Microsecond))
 	}
+}
+
+// handleReset flushes all stored comparison data so the current run restarts
+// from a clean slate. It is POST-only to prevent accidental data loss.
+func (p *Proxy) handleReset(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", http.MethodPost)
+		http.Error(w, "reset endpoint requires POST", http.StatusMethodNotAllowed)
+		return
+	}
+	if err := p.db.Reset(); err != nil {
+		http.Error(w, fmt.Sprintf("failed to reset data: %v", err), http.StatusInternalServerError)
+		return
+	}
+	log.Printf("[reset] stored comparison data flushed (%s %s)", r.Method, r.URL.Path)
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // shouldMirror reports whether a request should be sent to both targets and

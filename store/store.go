@@ -70,20 +70,26 @@ func New(dbPath string) (*Store, error) {
 		db.Close()
 		return nil, err
 	}
-	if _, err := db.Exec(schema); err != nil {
-		db.Close()
-		return nil, fmt.Errorf("creating schema: %w", err)
-	}
 	return s, nil
 }
 
-// Flush drops all data so each run starts from a clean slate. The table is
-// recreated lazily by the schema statement after Flush.
+// Flush drops all data and recreates the requests table so the store starts
+// from a clean slate. It is called on every run and exposed through the reset
+// endpoint.
 func (s *Store) Flush() error {
 	if _, err := s.db.Exec(dropSQL); err != nil {
 		return fmt.Errorf("flushing db: %w", err)
 	}
+	if _, err := s.db.Exec(schema); err != nil {
+		return fmt.Errorf("flushing db: recreating schema: %w", err)
+	}
 	return nil
+}
+
+// Reset discards all stored comparison data. The table (and its schema) is
+// recreated so the store is immediately ready to accept new records.
+func (s *Store) Reset() error {
+	return s.Flush()
 }
 
 // Close closes the underlying database.

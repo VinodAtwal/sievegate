@@ -60,6 +60,9 @@ func main() {
 		if cfg.Report.JSONEndpoint != "" {
 			log.Printf("report (json):    http://%s%s", addr, cfg.Report.JSONEndpoint)
 		}
+		if cfg.Report.ResetEndpoint != "" {
+			log.Printf("reset (POST):     http://%s%s", addr, cfg.Report.ResetEndpoint)
+		}
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("server error: %v", err)
 		}

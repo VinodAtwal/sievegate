@@ -139,6 +139,60 @@ func do(t *testing.T, ts *httptest.Server, method, path string) (*http.Response,
 	return res, string(b)
 }
 
+// TestResetEndpoint verifies the POST /reset endpoint wipes all stored
+// comparison data so a new run can start without restarting the proxy.
+func TestResetEndpoint(t *testing.T) {
+	orig := mockService(false)
+	mig := mockService(true)
+	defer orig.Close()
+	defer mig.Close()
+
+	ts, db, _ := setupProxy(t, orig, mig)
+
+	// GET must be rejected to prevent accidental data loss.
+	res, _ := do(t, ts, "GET", "/reset")
+	if res.StatusCode != http.StatusMethodNotAllowed {
+		t.Fatalf("GET /reset should be 405, got %d", res.StatusCode)
+	}
+	if allow := res.Header.Get("Allow"); allow != http.MethodPost {
+		t.Errorf("expected Allow: POST, got %q", allow)
+	}
+
+	// Accumulate some records.
+	do(t, ts, "GET", "/api/users?id=1")
+	do(t, ts, "GET", "/api/status")
+	records, err := db.List()
+	if err != nil {
+		t.Fatalf("list: %v", err)
+	}
+	if len(records) == 0 {
+		t.Fatal("expected records before reset")
+	}
+
+	// Reset wipes them.
+	res, _ = do(t, ts, "POST", "/reset")
+	if res.StatusCode != http.StatusNoContent {
+		t.Fatalf("POST /reset should be 204, got %d", res.StatusCode)
+	}
+	records, err = db.List()
+	if err != nil {
+		t.Fatalf("list after reset: %v", err)
+	}
+	if len(records) != 0 {
+		t.Fatalf("expected 0 records after reset, got %d", len(records))
+	}
+
+	// Store remains usable after reset.
+	do(t, ts, "GET", "/api/users?id=2")
+	records, err = db.List()
+	if err != nil {
+		t.Fatalf("list after post-reset traffic: %v", err)
+	}
+	if len(records) != 1 {
+		t.Fatalf("expected 1 record after post-reset traffic, got %d", len(records))
+	}
+}
+
 func TestEndToEnd(t *testing.T) {
 	orig := mockService(false)
 	mig := mockService(true)

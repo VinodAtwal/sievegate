@@ -49,6 +49,9 @@ to the report:
 
 - Markdown report: `http://localhost:8080/report`
 - JSON report:     `http://localhost:8080/report.json`
+- Reset data (POST): `curl -X POST http://localhost:8080/reset` — discards all
+  stored comparison data for the current run so you can start over without
+  restarting the proxy.
 
 ## Report
 
@@ -85,6 +88,7 @@ See `config.example.yaml` for a fully commented example.
 | `db.path` | `./migration.db` | SQLite file, flushed on every run |
 | `report.endpoint` | `/report` | Markdown report route |
 | `report.json_endpoint` | `/report.json` | JSON report route |
+| `report.reset_endpoint` | `/reset` | POST-only route that discards all stored data |
 | `report.store_bodies` | `false` | Keep truncated body previews in the report |
 | `report.store_full_bodies` | `true` | Keep COMPLETE bodies for mismatched records |
 | `report.latency_tolerance_ms` | `100` | Per-endpoint regression threshold |
